@@ -28,9 +28,15 @@ class _HomePageState extends State<HomePage> {
     if (_selectedIndex == 0) {
       Navigator.push(
         context,
-        MaterialPageRoute(builder: (context) => addToDoPage()),
+        MaterialPageRoute(builder: (context) => HomePage()),
       );
     } else if (_selectedIndex == 1) {
+      Navigator.push(
+        context,
+        MaterialPageRoute(builder: (context) => addToDoPage()),
+      );
+    }
+    else if (_selectedIndex == 2) {
       Navigator.push(
         context,
         MaterialPageRoute(builder: (context) => toDoListPage()),
@@ -83,17 +89,22 @@ class _HomePageState extends State<HomePage> {
         items: const <BottomNavigationBarItem>[
           BottomNavigationBarItem(
             icon: Icon(Icons.home),
-            label: 'Ana Sayfa',
+            label: 'Home',
           ),
           BottomNavigationBarItem(
-            icon: Icon(Icons.search),
-            label: 'Arama',
+            icon: Icon(Icons.note_add),
+            label: 'Yeni Görev Ekle',
+          ),
+          BottomNavigationBarItem(
+            icon: Icon(Icons.notes),
+            label: 'Tüm Görevler',
           ),
         ],
         currentIndex: _selectedIndex,
         selectedItemColor: Colors.blue,
         onTap: _onItemTapped,
       ),
+
     );
   }
 
