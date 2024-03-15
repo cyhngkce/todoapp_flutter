@@ -20,8 +20,8 @@ Future<List<Map<dynamic, dynamic>>> fetchWaitingTasks() async {
 
     return waitingTasks;
   } else {
-    // Handle error
+
     print('Error: ${response.statusCode}');
-    return []; // veya null döndürebilirsiniz, uygulamanıza göre değişir
+    return [];
   }
 }

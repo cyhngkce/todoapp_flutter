@@ -18,138 +18,168 @@ static int getCompletedTask(){
 
 }
 
-class _toDoListPageState extends State<toDoListPage> {
+class _toDoListPageState extends State<toDoListPage> with SingleTickerProviderStateMixin {
   static int numberOfCompletedTasks = 0;
   static int numberOfWaitingTasks = 0;
+  late TabController _tabController;
+  bool isLoading = true;
+  List<Map> completedTasks = [];
+  List<Map> waitingTasks = [];
 
-
-  bool isLoading=true;
-  List items=[];
   @override
   void initState() {
-
     super.initState();
+    _tabController = TabController(length: 2, vsync: this);
+    _tabController.addListener(_handleTabSelection);
     fetchToDo();
   }
+
+  @override
+  void dispose() {
+    _tabController.dispose();
+    super.dispose();
+  }
+
+  void _handleTabSelection() {
+    setState(() {});
+  }
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar:AppBar(
+      appBar: AppBar(
         title: Text('All To Do List'),
+        bottom: TabBar(
+          controller: _tabController,
+          tabs: [
+            Tab(text: 'Tamamlanan Görevler'),
+            Tab(text: 'Bekleyen Görevler'),
+          ],
+        ),
       ),
-      body: Visibility(
-        visible:isLoading,
-          child: Center(child:CircularProgressIndicator()),
-        replacement:RefreshIndicator(
-          onRefresh: fetchToDo,
-          child: ListView.builder(
-            itemCount: items.length,
-              itemBuilder: (context,index){
-              final item=items[index] as Map;
-              final id=item['_id'] as String;
-            return ListTile(
-              leading: CircleAvatar(child:Text('${index+1}')),
-              title: Text(item['title']),
-              subtitle: Text(item['description']),
-              trailing: PopupMenuButton(
-                onSelected: (value){
-                  if(value=='edit'){
-                    navigateToEditPage(item);
-                  }
-                  else if(value=='delete'){
-                    deleteById(id);
-                  }
-                  else if(value=='tamamlandı'){
-                    separateCompletedTasks(id);
-                  }
+      body: TabBarView(
+        controller: _tabController,
+        children: [
+          _buildCompletedTasksTab(),
+          _buildWaitingTasksTab(),
+        ],
+      ),
+    );
+  }
 
+  Widget _buildCompletedTasksTab() {
+    return _buildTaskList(completedTasks);
+  }
+
+  Widget _buildWaitingTasksTab() {
+    return _buildTaskList(waitingTasks);
+  }
+
+  Widget _buildTaskList(List<Map> tasks) {
+    return Visibility(
+      visible: isLoading,
+      child: Center(child: CircularProgressIndicator()),
+      replacement: RefreshIndicator(
+        onRefresh: fetchToDo,
+        child: ListView.builder(
+          itemCount: tasks.length,
+          itemBuilder: (context, index) {
+            final item = tasks[index];
+            final id = item['_id'] as String;
+            return ListTile(
+              leading: CircleAvatar(child: Text('${index + 1}')),
+              title: Text(item['title'] ?? ''),
+              subtitle: Text(item['description'] ?? ''),
+              trailing: PopupMenuButton(
+                onSelected: (value) {
+                  if (value == 'edit') {
+                    navigateToEditPage(item);
+                  } else if (value == 'delete') {
+                    deleteById(id);
+                  } else if (value == 'tamamlandı') {
+                    separateCompletedTasks(item);
+                  }
                 },
-                itemBuilder: (context){
-                  return[
-                    PopupMenuItem(child: Text('Edit'),value:'edit',),
-                    PopupMenuItem(child: Text('Delete'),value:'delete',),
-                    PopupMenuItem(child: Text('Tamamlandı'),value:'tamamlandı',),
+                itemBuilder: (context) {
+                  return [
+                    PopupMenuItem(child: Text('Edit'), value: 'edit'),
+                    PopupMenuItem(child: Text('Delete'), value: 'delete'),
+                    PopupMenuItem(child: Text('Tamamlandı'), value: 'tamamlandı'),
                   ];
                 },
               ),
             );
-          }),
+          },
         ),
       ),
     );
   }
-  Future<void> navigateToEditPage(Map item)async{
-    final route=MaterialPageRoute(builder: (context)=>addToDoPage(todo:item),);
-   await Navigator.push(context,route);
-   setState(() {
-     isLoading=true;
-   });
-   fetchToDo();
-  }
-  Future<void>deleteById(String id)async{
 
-    final url='https://api.nstack.in/v1/todos/$id';
-    final uri=Uri.parse(url);
-
-    final response= await http.delete(uri);
-    if(response.statusCode==200){
-      final filtered=items.where((element)=>element['_id']!=id).toList();
-      setState(() {
-  items=filtered;
-});
-
+  Future<void> fetchToDo() async {
+    final url = 'https://api.nstack.in/v1/todos?page=1&limit=10';
+    final uri = Uri.parse(url);
+    final response = await http.get(uri);
+    if (response.statusCode == 200) {
+      final json = jsonDecode(response.body) as Map;
+      final result = json['items'] as List;
+      completedTasks.clear();
+      waitingTasks.clear();
+      for (var item in result) {
+        if (item['is_completed'] == true) {
+          completedTasks.add(item);
+        } else {
+          waitingTasks.add(item);
+        }
+      }
     }
-    else{
+    setState(() {
+      numberOfCompletedTasks = completedTasks.length;
+      numberOfWaitingTasks = waitingTasks.length;
+      isLoading = false;
+    });
+  }
+
+  Future<void> navigateToEditPage(Map item) async {
+    final route = MaterialPageRoute(builder: (context) => addToDoPage(todo: item));
+    await Navigator.push(context, route);
+    setState(() {
+      isLoading = true;
+    });
+    fetchToDo();
+  }
+
+  Future<void> deleteById(String id) async {
+    final url = 'https://api.nstack.in/v1/todos/$id';
+    final uri = Uri.parse(url);
+    final response = await http.delete(uri);
+    if (response.statusCode != 200) {
       showErrorMessage('Deletion Failed');
     }
   }
-  void separateCompletedTasks(String id) {
-    int index = items.indexWhere((item) => item['_id'] == id);
-    if (index != -1) {
-      items[index]['is_completed'] = true;
+
+  void separateCompletedTasks(Map item) {
+    final String id = item['_id'];
+    final bool isCompleted = item['is_completed'] ?? false;
+    final String url = 'https://api.nstack.in/v1/todos/$id';
+    final uri = Uri.parse(url);
+    http.put(uri, body: jsonEncode({'is_completed': !isCompleted}));
+    if (isCompleted) {
+      waitingTasks.add(item);
+      completedTasks.remove(item);
+      numberOfWaitingTasks++;
+      numberOfCompletedTasks--;
+    } else {
+      waitingTasks.remove(item);
+      completedTasks.add(item);
+      numberOfWaitingTasks--;
+      numberOfCompletedTasks++;
     }
-    numberOfCompletedTasks++;
-    numberOfWaitingTasks--;
-
-  }
-  Future<void> fetchToDo()async {
-
-    final url ='https://api.nstack.in/v1/todos?page=1&limit=10';
-    final uri=Uri.parse(url);
-    final response=await http.get(uri);
-    if(response.statusCode==200){
-     final json=jsonDecode(response.body) as Map;
-     final result= json['items'] as List;
-     setState(() {
-       items=result;
-     });
-    }
-    setState(() {
-      isLoading=false;
-    });
-    List<Map> completedTasks = [];
-    List<Map> waitingTasks = [];
-
-    for (var item in items) {
-      if (item['is_completed'] == true) {
-        completedTasks.add(item);
-      } else {
-        waitingTasks.add(item);
-      }
-    }
-    numberOfWaitingTasks=waitingTasks.length;
-    numberOfCompletedTasks=completedTasks.length;
-
-    setState(() {
-      items = completedTasks + waitingTasks;
-    });
+    setState(() {});
   }
 
-  void showErrorMessage(String message){
-    final snackBar= SnackBar(content:Text(
-      message,
-      style: TextStyle(color:Colors.white),
-    ),
+  void showErrorMessage(String message) {
+    final snackBar = SnackBar(
+      content: Text(message, style: TextStyle(color: Colors.white)),
       backgroundColor: Colors.red,
     );
     ScaffoldMessenger.of(context).showSnackBar(snackBar);

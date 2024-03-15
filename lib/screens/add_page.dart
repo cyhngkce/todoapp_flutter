@@ -93,7 +93,7 @@ class _addToDoPageState extends State<addToDoPage> {
       descriptionController.text = '';
       showSuccessMessage('Update Success');
 
-      // Toplam görev sayısını 1 artır
+
       gorevSayisi++;
     } else {
       showErrorMessage('Update Failed');
