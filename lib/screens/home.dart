@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:todoapp_flutter/screens/add_page.dart';
 import 'package:todoapp_flutter/screens/todo_list.dart';
-
+import 'package:todoapp_flutter/util/todoapi.dart';
 class HomePage extends StatefulWidget {
   const HomePage({Key? key}) : super(key: key);
 
@@ -11,7 +11,16 @@ class HomePage extends StatefulWidget {
 
 class _HomePageState extends State<HomePage> {
   int _selectedIndex = 0;
-   void _onItemTapped(int index) {
+
+  Future<void> _refreshPage() async {
+
+    setState(() {
+      toDoListPage.getCompletedTask();
+      toDoListPage.getWaitingTask();
+    });
+  }
+
+  void _onItemTapped(int index) {
     setState(() {
       _selectedIndex = index;
     });
@@ -19,8 +28,8 @@ class _HomePageState extends State<HomePage> {
     if (_selectedIndex == 0) {
       Navigator.push(
         context,
-        MaterialPageRoute(builder: (context) => addToDoPage()),);
-
+        MaterialPageRoute(builder: (context) => addToDoPage()),
+      );
     } else if (_selectedIndex == 1) {
       Navigator.push(
         context,
@@ -33,10 +42,41 @@ class _HomePageState extends State<HomePage> {
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
-        title: Text("To Do List By Diginova"),
+        title: Text("To Do List App"),
       ),
-      body: Center(
-        child: Text('Ana İçerik Burada'),
+      body: RefreshIndicator(
+        onRefresh: _refreshPage,
+        child: Center(
+          child: Column(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              Text(
+                'Toplam Görev Sayısı:',
+                style: TextStyle(fontSize: 20),
+              ),
+              Text(
+                '${toDoListPage.getCompletedTask() + toDoListPage.getWaitingTask()}',
+                style: TextStyle(fontSize: 24, fontWeight: FontWeight.bold),
+              ),
+              Text(
+                'Tamamlanan Görev Sayısı:',
+                style: TextStyle(fontSize: 20),
+              ),
+              Text(
+                '${toDoListPage.getCompletedTask()}',
+                style: TextStyle(fontSize: 24, fontWeight: FontWeight.bold),
+              ),
+              Text(
+                'Bekleyen Görev Sayısı:',
+                style: TextStyle(fontSize: 20),
+              ),
+              Text(
+                '${toDoListPage.getWaitingTask()}',
+                style: TextStyle(fontSize: 24, fontWeight: FontWeight.bold),
+              ),
+            ],
+          ),
+        ),
       ),
 
       bottomNavigationBar: BottomNavigationBar(
@@ -49,7 +89,6 @@ class _HomePageState extends State<HomePage> {
             icon: Icon(Icons.search),
             label: 'Arama',
           ),
-
         ],
         currentIndex: _selectedIndex,
         selectedItemColor: Colors.blue,
@@ -57,6 +96,5 @@ class _HomePageState extends State<HomePage> {
       ),
     );
   }
-
 
 }

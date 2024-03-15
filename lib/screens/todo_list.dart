@@ -7,11 +7,22 @@ import 'package:todoapp_flutter/screens/add_page.dart';
 class toDoListPage extends StatefulWidget {
   const toDoListPage({super.key});
 
+static int getCompletedTask(){
+  return _toDoListPageState.numberOfCompletedTasks;
+}
+  static int getWaitingTask(){
+    return _toDoListPageState.numberOfWaitingTasks;
+  }
   @override
   State<toDoListPage> createState() => _toDoListPageState();
+
 }
 
 class _toDoListPageState extends State<toDoListPage> {
+  static int numberOfCompletedTasks = 0;
+  static int numberOfWaitingTasks = 0;
+
+
   bool isLoading=true;
   List items=[];
   @override
@@ -48,11 +59,16 @@ class _toDoListPageState extends State<toDoListPage> {
                   else if(value=='delete'){
                     deleteById(id);
                   }
+                  else if(value=='tamamlandı'){
+                    separateCompletedTasks(id);
+                  }
+
                 },
                 itemBuilder: (context){
                   return[
                     PopupMenuItem(child: Text('Edit'),value:'edit',),
                     PopupMenuItem(child: Text('Delete'),value:'delete',),
+                    PopupMenuItem(child: Text('Tamamlandı'),value:'tamamlandı',),
                   ];
                 },
               ),
@@ -71,6 +87,7 @@ class _toDoListPageState extends State<toDoListPage> {
    fetchToDo();
   }
   Future<void>deleteById(String id)async{
+
     final url='https://api.nstack.in/v1/todos/$id';
     final uri=Uri.parse(url);
 
@@ -86,6 +103,15 @@ class _toDoListPageState extends State<toDoListPage> {
       showErrorMessage('Deletion Failed');
     }
   }
+  void separateCompletedTasks(String id) {
+    int index = items.indexWhere((item) => item['_id'] == id);
+    if (index != -1) {
+      items[index]['is_completed'] = true;
+    }
+    numberOfCompletedTasks++;
+    numberOfWaitingTasks--;
+
+  }
   Future<void> fetchToDo()async {
 
     final url ='https://api.nstack.in/v1/todos?page=1&limit=10';
@@ -100,6 +126,22 @@ class _toDoListPageState extends State<toDoListPage> {
     }
     setState(() {
       isLoading=false;
+    });
+    List<Map> completedTasks = [];
+    List<Map> waitingTasks = [];
+
+    for (var item in items) {
+      if (item['is_completed'] == true) {
+        completedTasks.add(item);
+      } else {
+        waitingTasks.add(item);
+      }
+    }
+    numberOfWaitingTasks=waitingTasks.length;
+    numberOfCompletedTasks=completedTasks.length;
+
+    setState(() {
+      items = completedTasks + waitingTasks;
     });
   }
 
